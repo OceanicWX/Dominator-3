@@ -642,3 +642,78 @@ end
 end)
 end
 if asset and asset.Parent then asset:Destroy() end
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local oldScreenGui = CoreGui:FindFirstChild("OceanicWatermarkUI")
+if oldScreenGui then oldScreenGui:Destroy() end
+
+local fontCounts, colorCounts = {}, {}
+for _, v in ipairs(playerGui:GetDescendants()) do
+	if (v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox")) and v.Visible and v.Text ~= "" then
+		local face = v.FontFace
+		local fKey = face.Family .. "|" .. tostring(face.Weight) .. "|" .. tostring(face.Style)
+		if not fontCounts[fKey] then fontCounts[fKey] = { count = 0, face = face } end
+		fontCounts[fKey].count += 1
+
+		local c = v.TextColor3
+		local cKey = string.format("%.2f,%.2f,%.2f", c.R, c.G, c.B)
+		if not colorCounts[cKey] then colorCounts[cKey] = { count = 0, color = c } end
+		colorCounts[cKey].count += 1
+	end
+end
+
+local bestFont, maxF = Font.fromEnum(Enum.Font.SourceSansBold), 0
+for _, data in pairs(fontCounts) do
+	if data.count > maxF then maxF, bestFont = data.count, data.face end
+end
+
+local bestColor, maxC = Color3.fromRGB(245, 245, 245), 0
+for _, data in pairs(colorCounts) do
+	if data.count > maxC then maxC, bestColor = data.count, data.color end
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "OceanicWatermarkUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = CoreGui
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 500, 0, 50)
+mainFrame.Position = UDim2.new(0.5, -250, 1, -70)
+mainFrame.BackgroundTransparency = 1
+
+local subText = Instance.new("TextLabel", mainFrame)
+subText.Size = UDim2.new(1, 0, 0, 18)
+subText.Position = UDim2.new(0, 0, 0, 4)
+subText.BackgroundTransparency = 1
+subText.Text = "Also get me verified on Scriptblox so I can get these out faster!"
+subText.TextColor3 = bestColor
+subText.FontFace = bestFont
+subText.TextSize = 12
+subText.TextStrokeTransparency = 0.5
+
+local creditText = Instance.new("TextLabel", mainFrame)
+creditText.Size = UDim2.new(1, 0, 0, 24)
+creditText.Position = UDim2.new(0, 0, 0, 22)
+creditText.BackgroundTransparency = 1
+creditText.Text = "Script made by Oceanic"
+creditText.TextColor3 = bestColor
+creditText.FontFace = bestFont
+creditText.TextSize = 16
+creditText.TextStrokeTransparency = 0.5
+
+task.delay(5, function()
+	if not screenGui or not screenGui.Parent then return end
+	local info = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(subText, info, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	local lastTween = TweenService:Create(creditText, info, { TextTransparency = 1, TextStrokeTransparency = 1 })
+	lastTween:Play()
+	lastTween.Completed:Wait()
+	if screenGui and screenGui.Parent then screenGui:Destroy() end
+end)
