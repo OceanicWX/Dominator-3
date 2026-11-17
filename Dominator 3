@@ -1,0 +1,625 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+local backpack = player:WaitForChild("Backpack")
+local playerGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
+
+local oldScreenGui = CoreGui:FindFirstChild("Dominator2DriveUI")
+if oldScreenGui then oldScreenGui:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "Dominator2DriveUI"
+screenGui.Enabled = false
+screenGui.ResetOnSpawn = false
+screenGui.Parent = CoreGui
+
+local mainUIFrame = Instance.new("Frame", screenGui)
+mainUIFrame.Size = UDim2.new(1, 0, 1, 0)
+mainUIFrame.BackgroundTransparency = 1
+
+local leftSteerPanel = Instance.new("Frame", mainUIFrame)
+leftSteerPanel.Size = UDim2.new(0, 160, 0, 70)
+leftSteerPanel.Position = UDim2.new(0, 40, 1, -110)
+leftSteerPanel.BackgroundTransparency = 1
+
+local rightPedalPanel = Instance.new("Frame", mainUIFrame)
+rightPedalPanel.Size = UDim2.new(0, 180, 0, 110)
+rightPedalPanel.Position = UDim2.new(1, -220, 1, -150)
+rightPedalPanel.BackgroundTransparency = 1
+
+local speedoFrame = Instance.new("Frame", mainUIFrame)
+speedoFrame.Size = UDim2.new(0, 180, 0, 70)
+speedoFrame.Position = UDim2.new(0.5, -90, 1, -120)
+speedoFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+speedoFrame.BackgroundTransparency = 0.5
+Instance.new("UICorner", speedoFrame).CornerRadius = UDim.new(0, 8)
+
+local speedText = Instance.new("TextLabel", speedoFrame)
+speedText.Size = UDim2.new(1, 0, 0.7, 0)
+speedText.Position = UDim2.new(0, 0, 0, 2)
+speedText.BackgroundTransparency = 1
+speedText.Text = "000"
+speedText.TextColor3 = Color3.fromRGB(100, 240, 255)
+speedText.Font = Enum.Font.Code
+speedText.TextSize = 34
+
+local unitText = Instance.new("TextLabel", speedoFrame)
+unitText.Size = UDim2.new(1, 0, 0.3, 0)
+unitText.Position = UDim2.new(0, 0, 0.65, 0)
+unitText.BackgroundTransparency = 1
+unitText.Text = "MPH"
+unitText.TextColor3 = Color3.fromRGB(160, 160, 160)
+unitText.Font = Enum.Font.SourceSansBold
+unitText.TextSize = 14
+
+local controlBar = Instance.new("Frame", mainUIFrame)
+controlBar.Size = UDim2.new(0, 740, 0, 50)
+controlBar.Position = UDim2.new(0.5, -370, 1, -185)
+controlBar.BackgroundTransparency = 1
+
+local function createSleekButton(text, pos, size, parent)
+	local btn = Instance.new("TextButton", parent)
+	btn.Text = text
+	btn.Size = size
+	btn.Position = pos
+	btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	btn.TextColor3 = Color3.fromRGB(245, 245, 245)
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 22
+	btn.BackgroundTransparency = 0.4
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+	return btn
+end
+
+local btnLeft = createSleekButton("◀", UDim2.new(0, 0, 0, 10), UDim2.new(0, 70, 0, 50), leftSteerPanel)
+local btnRight = createSleekButton("▶", UDim2.new(0, 85, 0, 10), UDim2.new(0, 70, 0, 50), leftSteerPanel)
+local btnBrake = createSleekButton("┃┃┃", UDim2.new(0, 0, 0, 10), UDim2.new(0, 45, 0, 90), rightPedalPanel)
+btnBrake.TextColor3 = Color3.fromRGB(220, 60, 60)
+local btnReverse = createSleekButton("R", UDim2.new(0, 60, 0, 25), UDim2.new(0, 45, 0, 75), rightPedalPanel)
+btnReverse.TextSize = 20
+local btnForward = createSleekButton("┃┃┃", UDim2.new(0, 120, 0, 10), UDim2.new(0, 45, 0, 90), rightPedalPanel)
+btnForward.TextColor3 = Color3.fromRGB(60, 180, 60)
+
+local btnDeploy = createSleekButton("DEPLOY", UDim2.new(0, 0, 0, 0), UDim2.new(0, 140, 1, 0), controlBar)
+btnDeploy.BackgroundColor3 = Color3.fromRGB(30, 60, 110)
+local btnLights = createSleekButton("LIGHTS", UDim2.new(0, 150, 0, 0), UDim2.new(0, 140, 1, 0), controlBar)
+btnLights.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+local btnCabin = createSleekButton("CABIN", UDim2.new(0, 300, 0, 0), UDim2.new(0, 140, 1, 0), controlBar)
+btnCabin.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+local btnHorn = createSleekButton("HORN", UDim2.new(0, 450, 0, 0), UDim2.new(0, 140, 1, 0), controlBar)
+btnHorn.BackgroundColor3 = Color3.fromRGB(70, 20, 20)
+local btnCoolCamera = createSleekButton("COOL CAMERA", UDim2.new(0, 600, 0, 0), UDim2.new(0, 140, 1, 0), controlBar)
+btnCoolCamera.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+btnCoolCamera.TextSize = 18
+
+local persistentPanel = Instance.new("Frame", screenGui)
+persistentPanel.Size = UDim2.new(0, 200, 0, 40)
+persistentPanel.Position = UDim2.new(0, 40, 0, 70)
+persistentPanel.BackgroundTransparency = 1
+
+local btnHideUI = createSleekButton("HIDE UI", UDim2.new(0, 0, 0, 0), UDim2.new(0, 90, 1, 0), persistentPanel)
+btnHideUI.TextSize = 14
+local btnEngineToggle = createSleekButton("ENG ON", UDim2.new(0, 100, 0, 0), UDim2.new(0, 90, 1, 0), persistentPanel)
+btnEngineToggle.TextSize = 14
+btnEngineToggle.BackgroundColor3 = Color3.fromRGB(20, 100, 20)
+
+for _, name in ipairs({"Airbags", "Horn", "Lights", "Cool Camera", "Sit (D3)"}) do
+	local old = backpack:FindFirstChild(name) or char:FindFirstChild(name)
+	if old then old:Destroy() end
+end
+
+local objects = game:GetObjects("rbxassetid://18855886737")
+local asset = type(objects) == "table" and objects[1] or objects
+local target = asset and (asset.Name == "Mobile Dominator3" and asset or asset:FindFirstChild("Mobile Dominator3", true))
+
+if target then
+	for _, v in ipairs(target:GetDescendants()) do
+		if v.Name == "Anchor Button" then v:Destroy()
+		elseif v:IsA("BasePart") then v.Anchored = true end
+	end
+	if target:IsA("BasePart") then target.Anchored = true end
+
+	local spawnCFrame = hrp.CFrame * CFrame.new(0, -1.1, -15) * CFrame.Angles(0, math.rad(90), 0)
+	if target:IsA("Model") then target:PivotTo(spawnCFrame) else target.CFrame = spawnCFrame end
+
+	local wheels, wheelLookup = {}, {}
+	for _, v in ipairs(target:GetDescendants()) do
+		if v.Name:lower():find("wheel") and (v:IsA("Model") or v:IsA("BasePart")) then
+			local parentIsWheel = v.Parent and v.Parent ~= target and v.Parent.Name:lower():find("wheel")
+			if not parentIsWheel then table.insert(wheels, v) end
+		end
+	end
+
+	if #wheels >= 4 then
+		local w2 = wheels[2]
+		local targetY = w2:IsA("Model") and w2:GetPivot().Position.Y or w2.Position.Y
+		for _, i in ipairs({1, 3, 4}) do
+			local w = wheels[i]
+			if w:IsA("Model") then
+				local cf = w:GetPivot()
+				w:PivotTo(cf + Vector3.new(0, targetY - cf.Position.Y, 0))
+			else
+				w.Position = Vector3.new(w.Position.X, targetY, w.Position.Z)
+			end
+		end
+	end
+
+	for _, w in ipairs(wheels) do
+		wheelLookup[w] = true
+		for _, sub in ipairs(w:GetDescendants()) do wheelLookup[sub] = true end
+	end
+
+	local bodyParts, wheelParts, allParts = {}, {}, {}
+	if target:IsA("BasePart") and not wheelLookup[target] then table.insert(bodyParts, target) end
+	for _, v in ipairs(target:GetDescendants()) do
+		if v:IsA("BasePart") then
+			table.insert(wheelLookup[v] and wheelParts or bodyParts, v)
+		end
+	end
+	for _, p in ipairs(bodyParts) do table.insert(allParts, p) end
+	for _, p in ipairs(wheelParts) do table.insert(allParts, p) end
+
+	target.Parent = workspace
+	local modelCFrame = target:IsA("Model") and target:GetBoundingBox() or target.CFrame
+	local modelSize = target:IsA("Model") and select(2, target:GetBoundingBox()) or target.Size
+
+	local chassis = Instance.new("Part")
+	chassis.Name = "Dominator3ChassisRoot"
+	chassis.Size = Vector3.new(8, 2, 18)
+	chassis.Transparency = 1
+	chassis.CanCollide = false
+	chassis.Anchored = true
+	chassis.CFrame = CFrame.new(modelCFrame.Position) * (spawnCFrame - spawnCFrame.Position) * CFrame.Angles(0, math.rad(-90), 0)
+	chassis.CustomPhysicalProperties = PhysicalProperties.new(3.0, 0.05, 0.0, 1.0, 1.0)
+	chassis.Parent = target
+
+	local bodyWelds = {}
+	for _, p in ipairs(wheelParts) do
+		p.Massless = true
+		p.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.02, 0.0, 1.0, 1.0)
+		local w = Instance.new("WeldConstraint", chassis)
+		w.Part0, w.Part1 = chassis, p
+	end
+
+	for _, p in ipairs(bodyParts) do
+		p.Massless = true
+		p.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.0, 1.0, 1.0)
+		local w = Instance.new("Weld", chassis)
+		w.Part0, w.Part1 = chassis, p
+		w.C0 = chassis.CFrame:ToObjectSpace(p.CFrame)
+		table.insert(bodyWelds, { weld = w, baseC0 = w.C0 })
+	end
+
+	local driveAtt = Instance.new("Attachment", chassis)
+	local vehicleEngine = Instance.new("LinearVelocity", chassis)
+	vehicleEngine.Attachment0 = driveAtt
+	vehicleEngine.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	vehicleEngine.PrimaryTangentAxis = Vector3.new(1, 0, 0)
+	vehicleEngine.SecondaryTangentAxis = Vector3.new(0, 0, 1)
+	vehicleEngine.RelativeTo = Enum.ActuatorRelativeTo.World
+	vehicleEngine.MaxForce = 500000
+	vehicleEngine.PlaneVelocity = Vector2.zero
+
+	local vehicleSteer = Instance.new("AngularVelocity", chassis)
+	vehicleSteer.Attachment0 = driveAtt
+	vehicleSteer.RelativeTo = Enum.ActuatorRelativeTo.World
+	vehicleSteer.MaxTorque = 500000
+	vehicleSteer.AngularVelocity = Vector3.zero
+
+	local uprightGyro = Instance.new("BodyGyro", chassis)
+	uprightGyro.MaxTorque = Vector3.new(250000, 0, 250000)
+	uprightGyro.P = 15000
+	uprightGyro.D = 1500
+	uprightGyro.CFrame = chassis.CFrame
+
+	local function makeSound(id, vol, loop, maxDist)
+		local s = Instance.new("Sound", chassis)
+		s.SoundId = "rbxassetid://" .. id
+		s.Volume = vol
+		s.Looped = loop
+		s.RollOffMaxDistance = maxDist
+		return s
+	end
+
+	local airbagSound = makeSound("86592408723413", 3, false, 300)
+	local hornSound = makeSound("110678372100100", 4, true, 500)
+	hornSound.PlaybackSpeed = 1.3
+	local echo = Instance.new("EchoSoundEffect", hornSound)
+	echo.Delay, echo.Feedback, echo.WetLevel = 0.28, 0.38, -8
+	local reverb = Instance.new("ReverbSoundEffect", hornSound)
+	reverb.DecayTime, reverb.Density, reverb.Diffusion, reverb.WetLevel = 2.4, 0.7, 0.85, -10
+local startupSound = makeSound("18912671577", 3.5, false, 350)
+local idleSound = makeSound("102289457821409", 3, true, 350)
+pcall(function() ContentProvider:PreloadAsync({airbagSound, hornSound, startupSound, idleSound}) end)
+local inputState = { forward = false, reverse = false, left = false, right = false, brake = false }
+_G.D1DriveStateRef = inputState
+local driveState = { engineKillOverride = false, canDrive = true, deployed = false, currentSpeed = 0 }
+_G.Dominator3DriveState = driveState
+local isSeated, activeSeat, playerWeld, jumpConn = false, nil, nil, nil
+local soundDriverSeat, engineSession = nil, 0
+local isMuffled, cabinEQs = false, {}
+local function applyMuffle(s)
+if not s:IsA("Sound") or cabinEQs[s] then return end
+local ok, eq = pcall(function()
+local e = s:FindFirstChild("D3MuffleEQ") or Instance.new("EqualizerSoundEffect")
+e.Name = "D3MuffleEQ"
+e.HighGain, e.MidGain, e.LowGain, e.Priority = -35, -16, 2.5, 10
+e.Enabled = isMuffled
+e.Parent = s
+return e
+end)
+if ok and eq then
+cabinEQs[s] = eq
+s.Destroying:Connect(function() cabinEQs[s] = nil end)
+end
+end
+for _, v in ipairs(game:GetDescendants()) do if v:IsA("Sound") then applyMuffle(v) end end
+local soundConn
+soundConn = game.DescendantAdded:Connect(function(v)
+if not target.Parent then soundConn:Disconnect() return end
+if v:IsA("Sound") then applyMuffle(v) end
+end)
+local function setMuffle(state)
+if isMuffled == state then return end
+isMuffled = state
+for s, eq in pairs(cabinEQs) do
+if s.Parent and eq.Parent then eq.Enabled = state else cabinEQs[s] = nil end
+end
+end
+local function stopEngine()
+engineSession += 1
+if startupSound.IsPlaying then startupSound:Stop() end
+if idleSound.IsPlaying then idleSound:Stop() end
+idleSound.PlaybackSpeed = 1.0
+end
+local function startEngine()
+if driveState.engineKillOverride then return end
+engineSession += 1
+local cs = engineSession
+stopEngine()
+engineSession = cs
+startupSound:Play()
+startupSound.Ended:Once(function()
+if engineSession == cs and isSeated and not driveState.engineKillOverride and target.Parent then
+idleSound:Play()
+end
+end)
+end
+local uiHidden, hiddenGuis = false, {}
+local function setUIVisibility(hide)
+uiHidden = hide
+mainUIFrame.Visible = not hide
+btnEngineToggle.Visible = not hide
+btnHideUI.Text = hide and "SHOW UI" or "HIDE UI"
+if hide then
+table.clear(hiddenGuis)
+for _, list in ipairs({CoreGui:GetChildren(), playerGui:GetChildren()}) do
+for _, g in ipairs(list) do
+if g:IsA("ScreenGui") and g ~= screenGui and g.Enabled then
+g.Enabled = false
+hiddenGuis[g] = true
+end
+end
+end
+else
+for g in pairs(hiddenGuis) do if g and g.Parent then g.Enabled = true end end
+table.clear(hiddenGuis)
+end
+end
+btnHideUI.MouseButton1Click:Connect(function() setUIVisibility(not uiHidden) end)
+btnEngineToggle.MouseButton1Click:Connect(function()
+driveState.engineKillOverride = not driveState.engineKillOverride
+if driveState.engineKillOverride then
+driveState.canDrive = false
+btnEngineToggle.Text = "ENG OFF"
+btnEngineToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
+stopEngine()
+inputState.forward, inputState.reverse, inputState.left, inputState.right, inputState.brake = false, false, false, false, false
+else
+driveState.canDrive = true
+btnEngineToggle.Text = "ENG ON"
+btnEngineToggle.BackgroundColor3 = Color3.fromRGB(20, 100, 20)
+if isSeated and activeSeat == soundDriverSeat then startEngine() end
+end
+end)
+local camActive, camStage, camConn, camAnchor, camZoom = false, 0, nil, nil, 0
+local camOffsets = { Vector3.new(20, 3, 0), Vector3.new(0, 3, -22), Vector3.new(-20, 3, 0), Vector3.new(0, 3, 22), Vector3.new(0, 5, 26) }
+local function resetCam()
+camActive, camZoom = false, 0
+if camConn then camConn:Disconnect() camConn = nil end
+if camAnchor then camAnchor:Destroy() camAnchor = nil end
+camera.CameraType = Enum.CameraType.Custom
+camera.CameraSubject = humanoid
+btnCoolCamera.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+btnCoolCamera.TextColor3 = Color3.fromRGB(245, 245, 245)
+end
+btnCoolCamera.MouseButton1Click:Connect(function()
+if not target.Parent then return end
+if camActive then resetCam() return end
+camActive = true
+camStage = (camStage % #camOffsets) + 1
+camZoom = 0
+local pos = (chassis.CFrame * CFrame.new(camOffsets[camStage])).Position
+camAnchor = Instance.new("Part", workspace)
+camAnchor.Size, camAnchor.Transparency, camAnchor.Anchored, camAnchor.CanCollide = Vector3.new(0.1, 0.1, 0.1), 1, true, false
+camAnchor.Position = pos
+camera.CameraType = Enum.CameraType.Custom
+camera.CameraSubject = camAnchor
+camera.CFrame = CFrame.lookAt(pos, chassis.Position)
+btnCoolCamera.BackgroundColor3 = Color3.fromRGB(80, 150, 235)
+btnCoolCamera.TextColor3 = Color3.new(0, 0, 0)
+camConn = RunService.RenderStepped:Connect(function()
+if not camActive or not camAnchor or not target.Parent then resetCam() return end
+camAnchor.Position = (chassis.CFrame * CFrame.new(camOffsets[camStage])).Position
+local rot = camera.CFrame - camera.CFrame.Position
+camera.CFrame = (CFrame.new(camAnchor.Position) * rot) * CFrame.new(0, 0, camZoom)
+end)
+end)
+UserInputService.InputChanged:Connect(function(i, gp)
+if not gp and camActive and i.UserInputType == Enum.UserInputType.MouseWheel then
+camZoom = math.clamp(camZoom - (i.Position.Z * 2), -18, 30)
+end
+end)
+local function exitSeat()
+if not isSeated then return end
+isSeated = false
+setMuffle(false)
+inputState.forward, inputState.reverse, inputState.left, inputState.right, inputState.brake = false, false, false, false, false
+if uiHidden then setUIVisibility(false) end
+screenGui.Enabled = false
+if camActive then resetCam() end
+stopEngine()
+if playerWeld then playerWeld:Destroy() playerWeld = nil end
+if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+if hrp and activeSeat then hrp.CFrame = activeSeat.CFrame * CFrame.new(-6, 2, 0) end
+if humanoid then humanoid.Sit = false end
+activeSeat = nil
+end
+local function enterSeat(seatPart, isDriverSeat)
+if isSeated or not char or not hrp or not humanoid or humanoid.Health <= 0 then return end
+isSeated, activeSeat = true, seatPart
+hrp.CFrame = seatPart.CFrame * CFrame.new(0, 1.5, 0)
+humanoid.Sit = true
+playerWeld = Instance.new("WeldConstraint", hrp)
+playerWeld.Part0, playerWeld.Part1 = seatPart, hrp
+if isDriverSeat and seatPart == soundDriverSeat then
+screenGui.Enabled = true
+if not driveState.engineKillOverride then startEngine() end
+end
+jumpConn = humanoid:GetPropertyChangedSignal("Jump"):Connect(function()
+if humanoid.Jump then exitSeat() end
+end)
+end
+local baseSeat = Instance.new("Part")
+baseSeat.Name = "CustomIsolatedSeat"
+baseSeat.BrickColor = BrickColor.new("Dark stone grey")
+baseSeat.Material = Enum.Material.SmoothPlastic
+baseSeat.Anchored, baseSeat.CanCollide, baseSeat.Massless = true, true, true
+local vSeats, rSeats = {}, {}
+for _, v in ipairs(target:GetDescendants()) do
+if v:IsA("BasePart") then
+if v.Name == "VehicleSeat" then table.insert(vSeats, v)
+elseif v.Name == "Seat" then table.insert(rSeats, v) end
+end
+end
+local function bindSeat(custom, orig, isDriver)
+if orig:IsA("Seat") or orig:IsA("VehicleSeat") then orig.Disabled = true end
+custom.Size, custom.Transparency = orig.Size, orig.Transparency
+custom.CFrame = orig.CFrame * CFrame.new(0, 0.8, 0)
+custom.Parent = orig
+if isDriver and not soundDriverSeat then soundDriverSeat = custom end
+custom.Touched:Connect(function(hit) if hit.Parent == char then enterSeat(custom, isDriver) end end)
+local w = Instance.new("Weld", chassis)
+w.Part0, w.Part1 = chassis, custom
+w.C0 = chassis.CFrame:ToObjectSpace(custom.CFrame)
+table.insert(bodyWelds, { weld = w, baseC0 = w.C0 })
+table.insert(bodyParts, custom)
+table.insert(allParts, custom)
+end
+for i, s in ipairs(vSeats) do bindSeat(i == 1 and baseSeat or baseSeat:Clone(), s, i == 1) end
+for _, s in ipairs(rSeats) do bindSeat(baseSeat:Clone(), s, false) end
+if #vSeats == 0 then baseSeat:Destroy() end
+local function giveSitTool()
+local bp = player:FindFirstChild("Backpack")
+if not bp or not soundDriverSeat or bp:FindFirstChild("Sit (D3)") or (char and char:FindFirstChild("Sit (D3)")) then return end
+local tool = Instance.new("Tool")
+tool.Name = "Sit (D3)"
+tool.RequiresHandle, tool.CanBeDropped = false, false
+tool.Activated:Connect(function()
+if not target.Parent or not soundDriverSeat or activeSeat == soundDriverSeat then return end
+if isSeated then exitSeat() end
+if humanoid.Sit then humanoid.Sit = false task.wait() end
+enterSeat(soundDriverSeat, true)
+end)
+tool.Parent = bp
+end
+giveSitTool()
+player.CharacterAdded:Connect(function(newChar)
+char = newChar
+humanoid = char:WaitForChild("Humanoid")
+hrp = char:WaitForChild("HumanoidRootPart")
+isSeated, activeSeat = false, nil
+setMuffle(false)
+task.wait(0.2)
+giveSitTool()
+end)
+local lowered, isAnimating = false, false
+btnDeploy.MouseButton1Click:Connect(function()
+if isAnimating or not target.Parent then return end
+isAnimating = true
+local t = 0
+while airbagSound.TimeLength <= 0 and t < 2 do t += task.wait(0.05) end
+local animTime = airbagSound.TimeLength > 0 and airbagSound.TimeLength or 0.6
+airbagSound:Play()
+lowered = not lowered
+driveState.deployed = lowered
+btnDeploy.Text = lowered and "DEPLOYING..." or "RETRACTING..."
+btnDeploy.BackgroundColor3 = Color3.fromRGB(180, 100, 30)
+local info = TweenInfo.new(animTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local lastTween
+for _, item in ipairs(bodyWelds) do
+if item.weld and item.weld.Parent then
+lastTween = TweenService:Create(item.weld, info, { C0 = CFrame.new(0, lowered and -0.6 or 0, 0) * item.baseC0 })
+lastTween:Play()
+end
+end
+if lastTween then lastTween.Completed:Wait() end
+btnDeploy.Text = lowered and "DEPLOYED" or "DEPLOY"
+btnDeploy.BackgroundColor3 = lowered and Color3.fromRGB(180, 30, 30) or Color3.fromRGB(30, 60, 110)
+isAnimating = false
+end)
+local holdingHorn, hornSession = false, 0
+btnHorn.InputBegan:Connect(function(i)
+if (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) and not holdingHorn and target.Parent then
+holdingHorn = true
+hornSession += 1
+btnHorn.BackgroundColor3, btnHorn.TextColor3 = Color3.fromRGB(220, 40, 40), Color3.new(0, 0, 0)
+hornSound.Volume = 4
+if not hornSound.IsPlaying then hornSound:Play() end
+end
+end)
+btnHorn.InputEnded:Connect(function(i)
+if (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) and holdingHorn then
+holdingHorn = false
+hornSession += 1
+local s = hornSession
+btnHorn.BackgroundColor3, btnHorn.TextColor3 = Color3.fromRGB(70, 20, 20), Color3.fromRGB(245, 245, 245)
+if hornSound.IsPlaying then
+TweenService:Create(hornSound, TweenInfo.new(0.12), {Volume = 0}):Play()
+task.delay(1.8, function() if hornSession == s and not holdingHorn then hornSound:Stop() hornSound.Volume = 4 end end)
+end
+end
+end)
+local lightsOn, spawnedLights = false, {}
+btnLights.MouseButton1Click:Connect(function()
+if not target.Parent then return end
+lightsOn = not lightsOn
+btnLights.BackgroundColor3 = lightsOn and Color3.fromRGB(230, 200, 50) or Color3.fromRGB(50, 50, 50)
+btnLights.TextColor3 = lightsOn and Color3.new(0, 0, 0) or Color3.fromRGB(245, 245, 245)
+if lightsOn then
+local spread = math.max(modelSize.Z * 0.3, 2.2)
+for _, side in ipairs({-spread, spread}) do
+local p = Instance.new("Part", target)
+p.Size, p.Transparency, p.CanCollide, p.CastShadow, p.Massless = Vector3.new(0.1, 0.1, 0.1), 1, false, false, true
+p.CFrame = chassis.CFrame * CFrame.new(side, -modelSize.Y * 0.1, -(modelSize.X / 2) - 0.15)
+local w = Instance.new("Weld", chassis)
+w.Part0, w.Part1, w.C0 = chassis, p, chassis.CFrame:ToObjectSpace(p.CFrame)
+table.insert(bodyWelds, { weld = w, baseC0 = w.C0 })
+local spot = Instance.new("SpotLight", p)
+spot.Face, spot.Brightness, spot.Range, spot.Angle, spot.Color, spot.Shadows = Enum.NormalId.Front, 15, 60, 75, Color3.fromRGB(235, 245, 255), true
+local point = Instance.new("PointLight", p)
+point.Brightness, point.Range, point.Color = 3, 10, Color3.fromRGB(235, 245, 255)
+table.insert(spawnedLights, p)
+end
+else
+for _, p in ipairs(spawnedLights) do if p.Parent then p:Destroy() end end
+table.clear(spawnedLights)
+end
+end)
+local function bindDriveBtn(btn, key, activeColor, defaultColor)
+local activeInput = nil
+local function release()
+activeInput = nil
+inputState[key] = false
+btn.BackgroundTransparency = 0.4
+btn.TextColor3 = defaultColor
+end
+btn.InputBegan:Connect(function(i)
+if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+if driveState.engineKillOverride or not driveState.canDrive then return end
+activeInput = i
+if key == "forward" then inputState.reverse = false elseif key == "reverse" then inputState.forward = false end
+inputState[key] = true
+btn.BackgroundTransparency = 0.1
+if activeColor then btn.TextColor3 = activeColor end
+end
+end)
+btn.InputEnded:Connect(function(i) if i == activeInput then release() end end)
+UserInputService.InputEnded:Connect(function(i) if i == activeInput then release() end end)
+end
+bindDriveBtn(btnForward, "forward", Color3.fromRGB(100, 255, 100), Color3.fromRGB(60, 180, 60))
+bindDriveBtn(btnReverse, "reverse", Color3.fromRGB(255, 255, 100), Color3.fromRGB(245, 245, 245))
+bindDriveBtn(btnLeft, "left", nil, Color3.fromRGB(245, 245, 245))
+bindDriveBtn(btnRight, "right", nil, Color3.fromRGB(245, 245, 245))
+bindDriveBtn(btnBrake, "brake", Color3.fromRGB(255, 100, 100), Color3.fromRGB(220, 60, 60))
+for _, p in ipairs(allParts) do if p.Parent then p.Anchored = false end end
+chassis.Anchored = false
+local MAX_FORWARD_STUDS, MAX_REVERSE_STUDS = 128, 38
+local STUDS_TO_MPH = 95 / MAX_FORWARD_STUDS
+local currentPitch, currentTurn = 1.0, 0
+RunService.Heartbeat:Connect(function(dt)
+if not target.Parent or not chassis.Parent then setMuffle(false) return end
+local head = char and char:FindFirstChild("Head")
+local zoomDist = head and (camera.CFrame.Position - head.Position).Magnitude or 999
+setMuffle(isSeated and not camActive and zoomDist <= 2.2)
+local locked = driveState.deployed or driveState.engineKillOverride or not driveState.canDrive or not isSeated or activeSeat ~= soundDriverSeat
+local rayParams = RaycastParams.new()
+rayParams.FilterDescendantsInstances = {target, char}
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+local groundHit = workspace:Raycast(chassis.Position + Vector3.new(0, 2, 0), Vector3.new(0, -10, 0), rayParams)
+local isOffroad = groundHit and (groundHit.Material == Enum.Material.Grass or groundHit.Material == Enum.Material.Mud or groundHit.Material == Enum.Material.Sand or groundHit.Material == Enum.Material.Ground)
+local maxFwd = isOffroad and (MAX_FORWARD_STUDS * 0.72) or MAX_FORWARD_STUDS
+local maxRev = isOffroad and (MAX_REVERSE_STUDS * 0.75) or MAX_REVERSE_STUDS
+if locked then
+driveState.currentSpeed, currentTurn = 0, 0
+vehicleEngine.PlaneVelocity = Vector2.zero
+vehicleSteer.AngularVelocity = Vector3.zero
+else
+local absSp = math.abs(driveState.currentSpeed)
+if inputState.brake then
+local decel = 145 * dt
+driveState.currentSpeed = driveState.currentSpeed > 0 and math.max(0, driveState.currentSpeed - decel) or math.min(0, driveState.currentSpeed + decel)
+elseif inputState.forward then
+local curve = math.clamp(1.25 - (absSp / maxFwd) * 0.85, 0.28, 1.25)
+driveState.currentSpeed = math.min(maxFwd, driveState.currentSpeed + 46 * curve * dt)
+elseif inputState.reverse then
+local curve = math.clamp(1.2 - (absSp / maxRev) * 0.75, 0.35, 1.2)
+driveState.currentSpeed = math.max(-maxRev, driveState.currentSpeed - 34 * curve * dt)
+else
+local drag = 18 * dt
+if driveState.currentSpeed > maxFwd then driveState.currentSpeed = math.max(maxFwd, driveState.currentSpeed - 40 * dt)
+elseif driveState.currentSpeed > 0 then driveState.currentSpeed = math.max(0, driveState.currentSpeed - drag)
+elseif driveState.currentSpeed < -maxRev then driveState.currentSpeed = math.min(-maxRev, driveState.currentSpeed + 40 * dt)
+elseif driveState.currentSpeed < 0 then driveState.currentSpeed = math.min(0, driveState.currentSpeed + drag) end
+end
+local fwd = chassis.CFrame.LookVector
+vehicleEngine.PlaneVelocity = Vector2.new(fwd.X * driveState.currentSpeed, fwd.Z * driveState.currentSpeed)
+local targetTurn = 0
+if absSp > 0.5 and (inputState.left or inputState.right) then
+local rate = math.clamp(1.32 - (math.clamp(absSp / maxFwd, 0, 1) * 0.72), 0.52, 1.32) * (isOffroad and 0.85 or 1)
+local dir = driveState.currentSpeed < 0 and -1 or 1
+if inputState.left and not inputState.right then
+targetTurn = rate * dir
+elseif inputState.right and not inputState.left then
+targetTurn = -rate * dir
+end
+end
+local lagRate = (targetTurn ~= 0) and 3.2 or 6.5
+currentTurn += (targetTurn - currentTurn) * math.clamp(lagRate * dt, 0, 1)
+if targetTurn == 0 and math.abs(currentTurn) < 0.015 then
+currentTurn = 0
+end
+vehicleSteer.AngularVelocity = Vector3.new(0, currentTurn, 0)
+end
+speedText.Text = string.format("%03d", math.abs(math.floor(driveState.currentSpeed * STUDS_TO_MPH + 0.5)))
+if idleSound.IsPlaying and not driveState.engineKillOverride then
+local speedNorm = math.clamp(math.abs(driveState.currentSpeed) / MAX_FORWARD_STUDS, 0, 1)
+local gearRpm = (speedNorm > 0.02) and (0.25 + ((speedNorm * 5) % 1) * 0.75) or 0
+local targetPitch = 1.0 + (speedNorm * 0.65) + (gearRpm * 0.28) + ((inputState.forward or inputState.reverse) and 0.14 or 0)
+currentPitch += (targetPitch - currentPitch) * math.clamp(8 * dt, 0, 1)
+idleSound.PlaybackSpeed = math.clamp(currentPitch, 0.95, 2.05)
+else
+currentPitch, idleSound.PlaybackSpeed = 1.0, 1.0
+end
+end)
+end
+if asset and asset.Parent then asset:Destroy() end
