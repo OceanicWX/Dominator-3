@@ -179,20 +179,20 @@ if target then
 	chassis.CanCollide = false
 	chassis.Anchored = true
 	chassis.CFrame = CFrame.new(modelCFrame.Position) * (spawnCFrame - spawnCFrame.Position) * CFrame.Angles(0, math.rad(-90), 0)
-	chassis.CustomPhysicalProperties = PhysicalProperties.new(3.0, 0.05, 0.0, 1.0, 1.0)
+	chassis.CustomPhysicalProperties = PhysicalProperties.new(3.0, 0.0, 0.0, 100, 0)
 	chassis.Parent = target
 
 	local bodyWelds = {}
 	for _, p in ipairs(wheelParts) do
 		p.Massless = true
-		p.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.02, 0.0, 1.0, 1.0)
+		p.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.0, 0.0, 100, 0)
 		local w = Instance.new("WeldConstraint", chassis)
 		w.Part0, w.Part1 = chassis, p
 	end
 
 	for _, p in ipairs(bodyParts) do
 		p.Massless = true
-		p.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.1, 0.0, 1.0, 1.0)
+		p.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.0, 0.0, 100, 0)
 		local w = Instance.new("Weld", chassis)
 		w.Part0, w.Part1 = chassis, p
 		w.C0 = chassis.CFrame:ToObjectSpace(p.CFrame)
@@ -212,7 +212,7 @@ if target then
 	local vehicleSteer = Instance.new("AngularVelocity", chassis)
 	vehicleSteer.Attachment0 = driveAtt
 	vehicleSteer.RelativeTo = Enum.ActuatorRelativeTo.World
-	vehicleSteer.MaxTorque = 500000
+	vehicleSteer.MaxTorque = math.huge
 	vehicleSteer.AngularVelocity = Vector3.zero
 
 	local uprightGyro = Instance.new("BodyGyro", chassis)
@@ -241,9 +241,21 @@ local startupSound = makeSound("18912671577", 3.5, false, 350)
 local idleSound = makeSound("102289457821409", 3, true, 350)
 pcall(function() ContentProvider:PreloadAsync({airbagSound, hornSound, startupSound, idleSound}) end)
 local inputState = { forward = false, reverse = false, left = false, right = false, brake = false }
-_G.D1DriveStateRef = inputState
+_G.D3DriveStateRef = inputState
 local driveState = { engineKillOverride = false, canDrive = true, deployed = false, currentSpeed = 0 }
 _G.Dominator3DriveState = driveState
+local function resetAllInputs()
+inputState.forward, inputState.reverse, inputState.left, inputState.right, inputState.brake = false, false, false, false, false
+for _, b in ipairs({btnForward, btnReverse, btnLeft, btnRight, btnBrake}) do
+b.BackgroundTransparency = 0.4
+end
+btnForward.TextColor3 = Color3.fromRGB(60, 180, 60)
+btnReverse.TextColor3 = Color3.fromRGB(245, 245, 245)
+btnLeft.TextColor3 = Color3.fromRGB(245, 245, 245)
+btnRight.TextColor3 = Color3.fromRGB(245, 245, 245)
+btnBrake.TextColor3 = Color3.fromRGB(220, 60, 60)
+end
+UserInputService.WindowFocusReleased:Connect(resetAllInputs)
 local isSeated, activeSeat, playerWeld, jumpConn = false, nil, nil, nil
 local soundDriverSeat, engineSession = nil, 0
 local isMuffled, cabinEQs = false, {}
@@ -323,7 +335,7 @@ driveState.canDrive = false
 btnEngineToggle.Text = "ENG OFF"
 btnEngineToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
 stopEngine()
-inputState.forward, inputState.reverse, inputState.left, inputState.right, inputState.brake = false, false, false, false, false
+resetAllInputs()
 else
 driveState.canDrive = true
 btnEngineToggle.Text = "ENG ON"
@@ -373,7 +385,7 @@ local function exitSeat()
 if not isSeated then return end
 isSeated = false
 setMuffle(false)
-inputState.forward, inputState.reverse, inputState.left, inputState.right, inputState.brake = false, false, false, false, false
+resetAllInputs()
 if uiHidden then setUIVisibility(false) end
 screenGui.Enabled = false
 if camActive then resetCam() end
@@ -448,6 +460,7 @@ char = newChar
 humanoid = char:WaitForChild("Humanoid")
 hrp = char:WaitForChild("HumanoidRootPart")
 isSeated, activeSeat = false, nil
+resetAllInputs()
 setMuffle(false)
 task.wait(0.2)
 giveSitTool()
@@ -462,6 +475,7 @@ local animTime = airbagSound.TimeLength > 0 and airbagSound.TimeLength or 0.6
 airbagSound:Play()
 lowered = not lowered
 driveState.deployed = lowered
+if lowered then resetAllInputs() end
 btnDeploy.Text = lowered and "DEPLOYING..." or "RETRACTING..."
 btnDeploy.BackgroundColor3 = Color3.fromRGB(180, 100, 30)
 local info = TweenInfo.new(animTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -535,7 +549,7 @@ btn.TextColor3 = defaultColor
 end
 btn.InputBegan:Connect(function(i)
 if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-if driveState.engineKillOverride or not driveState.canDrive then return end
+if driveState.engineKillOverride or not driveState.canDrive or driveState.deployed then return end
 activeInput = i
 if key == "forward" then inputState.reverse = false elseif key == "reverse" then inputState.forward = false end
 inputState[key] = true
@@ -544,6 +558,11 @@ if activeColor then btn.TextColor3 = activeColor end
 end
 end)
 btn.InputEnded:Connect(function(i) if i == activeInput then release() end end)
+btn.MouseLeave:Connect(function()
+if activeInput and activeInput.UserInputType == Enum.UserInputType.MouseButton1 then
+release()
+end
+end)
 UserInputService.InputEnded:Connect(function(i) if i == activeInput then release() end end)
 end
 bindDriveBtn(btnForward, "forward", Color3.fromRGB(100, 255, 100), Color3.fromRGB(60, 180, 60))
