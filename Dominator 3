@@ -16,6 +16,12 @@ local camera = workspace.CurrentCamera
 local oldScreenGui = CoreGui:FindFirstChild("Dominator2DriveUI")
 if oldScreenGui then oldScreenGui:Destroy() end
 
+for _, obj in ipairs(workspace:GetChildren()) do
+	if obj.Name == "Mobile Dominator3" or obj:FindFirstChild("Dominator3ChassisRoot") then
+		obj:Destroy()
+	end
+end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Dominator2DriveUI"
 screenGui.Enabled = false
@@ -128,7 +134,7 @@ if target then
 	end
 	if target:IsA("BasePart") then target.Anchored = true end
 
-	local spawnCFrame = hrp.CFrame * CFrame.new(0, -1.1, -15) * CFrame.Angles(0, math.rad(90), 0)
+	local spawnCFrame = hrp.CFrame * CFrame.new(0, -1.5, -15) * CFrame.Angles(0, math.rad(90), 0)
 	if target:IsA("Model") then target:PivotTo(spawnCFrame) else target.CFrame = spawnCFrame end
 
 	local wheels, wheelLookup = {}, {}
@@ -185,9 +191,31 @@ if target then
 	local bodyWelds = {}
 	for _, p in ipairs(wheelParts) do
 		p.Massless = true
+		p.CanCollide = false
 		p.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.0, 0.0, 100, 0)
 		local w = Instance.new("WeldConstraint", chassis)
 		w.Part0, w.Part1 = chassis, p
+	end
+
+	for _, wObj in ipairs(wheels) do
+		local wCF = wObj:IsA("Model") and wObj:GetPivot() or wObj.CFrame
+		local wSize = wObj:IsA("Model") and select(2, wObj:GetBoundingBox()) or wObj.Size
+		local radius = math.max(wSize.Y, wSize.Z, 3.2)
+
+		local sphere = Instance.new("Part")
+		sphere.Name = "SmoothWheelCollider"
+		sphere.Shape = Enum.PartType.Ball
+		sphere.Size = Vector3.new(radius, radius, radius)
+		sphere.CFrame = CFrame.new(wCF.Position) * CFrame.new(0, 0.4, 0)
+		sphere.Transparency = 1
+		sphere.CanCollide = true
+		sphere.Massless = true
+		sphere.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.0, 0.0, 100, 100)
+		sphere.Parent = target
+
+		local w = Instance.new("WeldConstraint", chassis)
+		w.Part0, w.Part1 = chassis, sphere
+		table.insert(allParts, sphere)
 	end
 
 	for _, p in ipairs(bodyParts) do
@@ -211,32 +239,29 @@ if target then
 
 	local vehicleSteer = Instance.new("AngularVelocity", chassis)
 	vehicleSteer.Attachment0 = driveAtt
-	vehicleSteer.RelativeTo = Enum.ActuatorRelativeTo.World
-	vehicleSteer.MaxTorque = math.huge
-	vehicleSteer.AngularVelocity = Vector3.zero
-
-	local uprightGyro = Instance.new("BodyGyro", chassis)
-	uprightGyro.MaxTorque = Vector3.new(250000, 0, 250000)
-	uprightGyro.P = 15000
-	uprightGyro.D = 1500
-	uprightGyro.CFrame = chassis.CFrame
-
-	local function makeSound(id, vol, loop, maxDist)
-		local s = Instance.new("Sound", chassis)
-		s.SoundId = "rbxassetid://" .. id
-		s.Volume = vol
-		s.Looped = loop
-		s.RollOffMaxDistance = maxDist
-		return s
-	end
-
-	local airbagSound = makeSound("86592408723413", 3, false, 300)
-	local hornSound = makeSound("110678372100100", 4, true, 500)
-	hornSound.PlaybackSpeed = 1.3
-	local echo = Instance.new("EchoSoundEffect", hornSound)
-	echo.Delay, echo.Feedback, echo.WetLevel = 0.28, 0.38, -8
-	local reverb = Instance.new("ReverbSoundEffect", hornSound)
-	reverb.DecayTime, reverb.Density, reverb.Diffusion, reverb.WetLevel = 2.4, 0.7, 0.85, -10
+vehicleSteer.RelativeTo = Enum.ActuatorRelativeTo.World
+vehicleSteer.MaxTorque = math.huge
+vehicleSteer.AngularVelocity = Vector3.zero
+local uprightGyro = Instance.new("BodyGyro", chassis)
+uprightGyro.MaxTorque = Vector3.new(800000, 0, 800000)
+uprightGyro.P = 80000
+uprightGyro.D = 2000
+uprightGyro.CFrame = chassis.CFrame
+local function makeSound(id, vol, loop, maxDist)
+local s = Instance.new("Sound", chassis)
+s.SoundId = "rbxassetid://" .. id
+s.Volume = vol
+s.Looped = loop
+s.RollOffMaxDistance = maxDist
+return s
+end
+local airbagSound = makeSound("86592408723413", 3, false, 300)
+local hornSound = makeSound("110678372100100", 4, true, 500)
+hornSound.PlaybackSpeed = 1.3
+local echo = Instance.new("EchoSoundEffect", hornSound)
+echo.Delay, echo.Feedback, echo.WetLevel = 0.28, 0.38, -8
+local reverb = Instance.new("ReverbSoundEffect", hornSound)
+reverb.DecayTime, reverb.Density, reverb.Diffusion, reverb.WetLevel = 2.4, 0.7, 0.85, -10
 local startupSound = makeSound("18912671577", 3.5, false, 350)
 local idleSound = makeSound("102289457821409", 3, true, 350)
 pcall(function() ContentProvider:PreloadAsync({airbagSound, hornSound, startupSound, idleSound}) end)
@@ -575,16 +600,27 @@ chassis.Anchored = false
 local MAX_FORWARD_STUDS, MAX_REVERSE_STUDS = 128, 38
 local STUDS_TO_MPH = 95 / MAX_FORWARD_STUDS
 local currentPitch, currentTurn = 1.0, 0
+local smoothPitch, smoothRoll = 0, 0
+local rayParams = RaycastParams.new()
+rayParams.FilterDescendantsInstances = {target, char}
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
 RunService.Heartbeat:Connect(function(dt)
 if not target.Parent or not chassis.Parent then setMuffle(false) return end
 local head = char and char:FindFirstChild("Head")
 local zoomDist = head and (camera.CFrame.Position - head.Position).Magnitude or 999
 setMuffle(isSeated and not camActive and zoomDist <= 2.2)
+local groundHit = workspace:Raycast(chassis.Position + Vector3.new(0, 2, 0), Vector3.new(0, -12, 0), rayParams)
+local yawOnly = CFrame.new(chassis.Position) * CFrame.Angles(0, select(2, chassis.CFrame:ToEulerAnglesYXZ()), 0)
+local fHit = workspace:Raycast((yawOnly * CFrame.new(0, 4, -7.5)).Position, Vector3.new(0, -14, 0), rayParams)
+local bHit = workspace:Raycast((yawOnly * CFrame.new(0, 4, 7.5)).Position, Vector3.new(0, -14, 0), rayParams)
+local lHit = workspace:Raycast((yawOnly * CFrame.new(-3.8, 4, 0)).Position, Vector3.new(0, -14, 0), rayParams)
+local rHit = workspace:Raycast((yawOnly * CFrame.new(3.8, 4, 0)).Position, Vector3.new(0, -14, 0), rayParams)
+local targetPitch = (fHit and bHit) and math.clamp(math.atan2(fHit.Position.Y - bHit.Position.Y, 15), -0.8, 0.8) or 0
+local targetRoll = (lHit and rHit) and math.clamp(math.atan2(rHit.Position.Y - lHit.Position.Y, 7.6), -0.8, 0.8) or 0
+smoothPitch += (targetPitch - smoothPitch) * math.clamp(25 * dt, 0, 1)
+smoothRoll += (targetRoll - smoothRoll) * math.clamp(25 * dt, 0, 1)
+uprightGyro.CFrame = yawOnly * CFrame.Angles(smoothPitch, 0, smoothRoll)
 local locked = driveState.deployed or driveState.engineKillOverride or not driveState.canDrive or not isSeated or activeSeat ~= soundDriverSeat
-local rayParams = RaycastParams.new()
-rayParams.FilterDescendantsInstances = {target, char}
-rayParams.FilterType = Enum.RaycastFilterType.Exclude
-local groundHit = workspace:Raycast(chassis.Position + Vector3.new(0, 2, 0), Vector3.new(0, -10, 0), rayParams)
 local isOffroad = groundHit and (groundHit.Material == Enum.Material.Grass or groundHit.Material == Enum.Material.Mud or groundHit.Material == Enum.Material.Sand or groundHit.Material == Enum.Material.Ground)
 local maxFwd = isOffroad and (MAX_FORWARD_STUDS * 0.72) or MAX_FORWARD_STUDS
 local maxRev = isOffroad and (MAX_REVERSE_STUDS * 0.75) or MAX_REVERSE_STUDS
